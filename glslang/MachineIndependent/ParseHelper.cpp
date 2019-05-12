@@ -3259,10 +3259,10 @@ void TParseContext::globalQualifierTypeCheck(const TSourceLoc& loc, const TQuali
     if (qualifier.storage == EvqVaryingIn) {
         switch (language) {
         case EShLangVertex:
-            if (publicType.basicType == EbtStruct) {
+            /*if (publicType.basicType == EbtStruct) {
                 error(loc, "cannot be a structure or array", GetStorageQualifierString(qualifier.storage), "");
                 return;
-            }
+            }*/
             if (publicType.arraySizes) {
                 requireProfile(loc, ~EEsProfile, "vertex input arrays");
                 profileRequires(loc, ENoProfile, 150, nullptr, "vertex input arrays");
@@ -4793,7 +4793,39 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         publicType.qualifier.layoutPushConstant = true;
         return;
     }
-    if (id == "buffer_reference") {
+	if (id == "dynamic") {
+		publicType.qualifier.layoutDynamic = true;
+		return;
+	}
+	if (id == "material") {
+		publicType.qualifier.layoutFrequency = EqqMaterial;
+		return;
+	}
+	if (id == "instance")	{
+		publicType.qualifier.layoutFrequency = EqqInstance;
+		return;
+	}
+	if (id == "technique") {
+		publicType.qualifier.layoutFrequency = EqqTechnique;
+		return;
+	}
+	if (id == "mesh") {
+		publicType.qualifier.layoutFrequency = EqqMesh;
+		return;
+	}
+	if (id == "object") {
+		publicType.qualifier.layoutFrequency = EqqObject;
+		return;
+	}
+	if (id == "model") {
+		publicType.qualifier.layoutFrequency = EqqModel;
+		return;
+	}
+	if (id == "dynamic") {
+		publicType.qualifier.layoutDynamic = true;
+		return;
+	}    
+	if (id == "buffer_reference") {
         requireVulkan(loc, "buffer_reference");
         requireExtensions(loc, 1, &E_GL_EXT_buffer_reference, "buffer_reference");
         publicType.qualifier.layoutBufferReference = true;
@@ -4801,20 +4833,20 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         intermediate.setUsePhysicalStorageBuffer();
         return;
     }
-    if (language == EShLangGeometry || language == EShLangTessEvaluation
+    /*if (language == EShLangGeometry || language == EShLangTessEvaluation
 #ifdef NV_EXTENSIONS
         || language == EShLangMeshNV
 #endif
-       ) {
+       )*/ {
         if (id == TQualifier::getGeometryString(ElgTriangles)) {
             publicType.shaderQualifiers.geometry = ElgTriangles;
             return;
         }
-        if (language == EShLangGeometry
+       /* if (language == EShLangGeometry
 #ifdef NV_EXTENSIONS
             || language == EShLangMeshNV
 #endif
-           ) {
+           )*/ {
             if (id == TQualifier::getGeometryString(ElgPoints)) {
                 publicType.shaderQualifiers.geometry = ElgPoints;
                 return;
@@ -4852,8 +4884,8 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
                 }
 #endif
             }
-        } else {
-            assert(language == EShLangTessEvaluation);
+        /*} else {
+            assert(language == EShLangTessEvaluation);*/
 
             // input primitive
             if (id == TQualifier::getGeometryString(ElgTriangles)) {
@@ -4900,7 +4932,8 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
             }
         }
     }
-    if (language == EShLangFragment) {
+	//zhouhe: allow all layout on all stage
+    /*if (language == EShLangFragment)*/ {
         if (id == "origin_upper_left") {
             requireProfile(loc, ECoreProfile | ECompatibilityProfile, "origin_upper_left");
             publicType.shaderQualifiers.originUpperLeft = true;
@@ -4956,19 +4989,21 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
             return;
         }
     }
-    if (language == EShLangVertex ||
+	//zhouhe: allow all layout on all stage
+	
+    /*if (language == EShLangVertex ||
         language == EShLangTessControl ||
         language == EShLangTessEvaluation ||
-        language == EShLangGeometry ) {
+        language == EShLangGeometry ) */{
         if (id == "viewport_relative") {
             requireExtensions(loc, 1, &E_GL_NV_viewport_array2, "view port array2");
             publicType.qualifier.layoutViewportRelative = true;
             return;
         }
-    } else {
-        if (language == EShLangRayGenNV || language == EShLangIntersectNV ||
+    } /*else*/ {
+        /*if (language == EShLangRayGenNV || language == EShLangIntersectNV ||
         language == EShLangAnyHitNV || language == EShLangClosestHitNV ||
-        language == EShLangMissNV || language == EShLangCallableNV) {
+        language == EShLangMissNV || language == EShLangCallableNV)*/ {
             if (id == "shaderrecordnv") {
                 publicType.qualifier.layoutShaderRecordNV = true;
                 return;
@@ -5060,8 +5095,9 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
             error(loc, "set is too large", id.c_str(), "");
         else
             publicType.qualifier.layoutSet = value;
-        if (value != 0)
+        /*if (value != 0)
             requireVulkan(loc, "descriptor set");
+			*/
         return;
     } else if (id == "binding") {
         profileRequires(loc, ~EEsProfile, 420, E_GL_ARB_shading_language_420pack, "binding");
@@ -5147,10 +5183,10 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
     }
 
 #if NV_EXTENSIONS
-    if (language == EShLangVertex ||
+   /* if (language == EShLangVertex ||
         language == EShLangTessControl ||
         language == EShLangTessEvaluation ||
-        language == EShLangGeometry) {
+        language == EShLangGeometry) */{
         if (id == "secondary_view_offset") {
             requireExtensions(loc, 1, &E_GL_NV_stereo_view_rendering, "stereo view rendering");
             publicType.qualifier.layoutSecondaryViewportRelativeOffset = value;
@@ -5168,11 +5204,11 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         return;
     }
 
-    switch (language) {
-    case EShLangVertex:
-        break;
+    //switch (language) {
+    //case EShLangVertex:
+    //    break;
 
-    case EShLangTessControl:
+    //case EShLangTessControl:
         if (id == "vertices") {
             if (value == 0)
                 error(loc, "must be greater than 0", "vertices", "");
@@ -5180,12 +5216,12 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
                 publicType.shaderQualifiers.vertices = value;
             return;
         }
-        break;
+    //    break;
 
-    case EShLangTessEvaluation:
-        break;
+   // case EShLangTessEvaluation:
+     //   break;
 
-    case EShLangGeometry:
+    //case EShLangGeometry:
         if (id == "invocations") {
             profileRequires(loc, ECompatibilityProfile | ECoreProfile, 400, nullptr, "invocations");
             if (value == 0)
@@ -5207,9 +5243,9 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
                 intermediate.setMultiStream();
             return;
         }
-        break;
+        //break;
 
-    case EShLangFragment:
+    //case EShLangFragment:
         if (id == "index") {
             requireProfile(loc, ECompatibilityProfile | ECoreProfile, "index layout qualifier on fragment output");
             const char* exts[2] = { E_GL_ARB_separate_shader_objects, E_GL_ARB_explicit_attrib_location };
@@ -5224,10 +5260,11 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
             publicType.qualifier.layoutIndex = value;
             return;
         }
-        break;
+       // break;
 
+    //case EShLangCompute:
 #ifdef NV_EXTENSIONS
-    case EShLangMeshNV:
+    //case EShLangMeshNV:
         if (id == "max_vertices") {
             requireExtensions(loc, 1, &E_GL_NV_mesh_shader, "max_vertices");
             publicType.shaderQualifiers.vertices = value;
@@ -5244,10 +5281,10 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
         }
         // Fall through
 
-    case EShLangTaskNV:
+    //case EShLangTaskNV:
         // Fall through
 #endif
-    case EShLangCompute:
+    //case EShLangCompute:
         if (id.compare(0, 11, "local_size_") == 0) {
 #ifdef NV_EXTENSIONS
             if (language == EShLangMeshNV || language == EShLangTaskNV) {
@@ -5290,11 +5327,11 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
                 }
             }
         }
-        break;
+      //  break;
 
-    default:
-        break;
-    }
+    //default:
+        //break;
+    //}
 
     error(loc, "there is no such layout identifier for this stage taking an assigned value", id.c_str(), "");
 }
@@ -5362,6 +5399,8 @@ void TParseContext::mergeObjectLayoutQualifiers(TQualifier& dst, const TQualifie
 
         if (src.layoutPushConstant)
             dst.layoutPushConstant = true;
+		if (src.layoutFrequency != EqqCount)
+			dst.layoutFrequency = src.layoutFrequency;
 
         if (src.layoutBufferReference)
             dst.layoutBufferReference = true;
@@ -5647,8 +5686,8 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
 
     // Image format
     if (qualifier.hasFormat()) {
-        if (! type.isImage())
-            error(loc, "only apply to images", TQualifier::getLayoutFormatString(qualifier.layoutFormat), "");
+		if (!type.isImage())
+			;// error(loc, "only apply to images", TQualifier::getLayoutFormatString(qualifier.layoutFormat), "");
         else {
             if (type.getSampler().type == EbtFloat && qualifier.layoutFormat > ElfFloatGuard)
                 error(loc, "does not apply to floating point images", TQualifier::getLayoutFormatString(qualifier.layoutFormat), "");
@@ -5785,8 +5824,8 @@ void TParseContext::layoutQualifierCheck(const TSourceLoc& loc, const TQualifier
             break;
         }
         if (qualifier.hasIndex()) {
-            if (qualifier.storage != EvqVaryingOut)
-                error(loc, "can only be used on an output", "index", "");
+            //if (qualifier.storage != EvqVaryingOut)
+            //    error(loc, "can only be used on an output", "index", "");
             if (! qualifier.hasLocation())
                 error(loc, "can only be used with an explicit location", "index", "");
         }
@@ -5812,6 +5851,7 @@ void TParseContext::layoutQualifierCheck(const TSourceLoc& loc, const TQualifier
                 error(loc, "offset/align can only be used on a uniform or buffer", "layout", "");
         }
     }
+
     if (qualifier.layoutPushConstant) {
         if (qualifier.storage != EvqUniform)
             error(loc, "can only be used with a uniform", "push_constant", "");
@@ -7290,11 +7330,11 @@ void TParseContext::blockStageIoCheck(const TSourceLoc& loc, const TQualifier& q
         profileRequires(loc, ~EEsProfile, 150, E_GL_ARB_separate_shader_objects, "input block");
         // It is a compile-time error to have an input block in a vertex shader or an output block in a fragment shader
         // "Compute shaders do not permit user-defined input variables..."
-        requireStage(loc, (EShLanguageMask)(EShLangTessControlMask|EShLangTessEvaluationMask|EShLangGeometryMask|EShLangFragmentMask
+        //requireStage(loc, (EShLanguageMask)(EShLangTessControlMask|EShLangTessEvaluationMask|EShLangGeometryMask|EShLangFragmentMask
 #ifdef NV_EXTENSIONS
-                                            |EShLangMeshNVMask
+       //                                     |EShLangMeshNVMask
 #endif
-                                           ), "input block");
+       //                                    ), "input block");
         if (language == EShLangFragment) {
             profileRequires(loc, EEsProfile, 320, Num_AEP_shader_io_blocks, AEP_shader_io_blocks, "fragment input block");
         }
@@ -7306,11 +7346,11 @@ void TParseContext::blockStageIoCheck(const TSourceLoc& loc, const TQualifier& q
         break;
     case EvqVaryingOut:
         profileRequires(loc, ~EEsProfile, 150, E_GL_ARB_separate_shader_objects, "output block");
-        requireStage(loc, (EShLanguageMask)(EShLangVertexMask|EShLangTessControlMask|EShLangTessEvaluationMask|EShLangGeometryMask
+        /*requireStage(loc, (EShLanguageMask)(EShLangVertexMask|EShLangTessControlMask|EShLangTessEvaluationMask|EShLangGeometryMask
 #ifdef NV_EXTENSIONS
                                             |EShLangMeshNVMask|EShLangTaskNVMask
 #endif
-                                           ), "output block");
+                                           ), "output block");*/
         // ES 310 can have a block before shader_io is turned on, so skip this test for built-ins
         if (language == EShLangVertex && ! parsingBuiltins) {
             profileRequires(loc, EEsProfile, 320, Num_AEP_shader_io_blocks, AEP_shader_io_blocks, "vertex output block");
@@ -7637,9 +7677,9 @@ void TParseContext::updateStandaloneQualifierDefaults(const TSourceLoc& loc, con
 {
     if (publicType.shaderQualifiers.vertices != TQualifier::layoutNotSet) {
 #ifdef NV_EXTENSIONS
-        assert(language == EShLangTessControl || language == EShLangGeometry || language == EShLangMeshNV);
+        //assert(language == EShLangTessControl || language == EShLangGeometry || language == EShLangMeshNV);
 #else
-        assert(language == EShLangTessControl || language == EShLangGeometry);
+        //assert(language == EShLangTessControl || language == EShLangGeometry);
 #endif
         const char* id = (language == EShLangTessControl) ? "vertices" : "max_vertices";
 

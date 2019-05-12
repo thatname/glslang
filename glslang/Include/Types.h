@@ -326,7 +326,7 @@ enum TVertexOrder {
 // Note: order matters, as type of format is done by comparison.
 enum TLayoutFormat {
     ElfNone,
-
+	
     // Float image
     ElfRgba32f,
     ElfRgba16f,
@@ -385,7 +385,32 @@ enum TLayoutFormat {
     ElfR16ui,
     ElfR8ui,
 
+	//zhouhe : added all 3 channel vertex formats
+	ElfRgb32f,
+	/*ElfRgb32i,
+	ElfRgb32ui,
+
+	ElfRgb16,
+	ElfRgb16Snorm,
+	ElfRgb16i,
+	ElfRgb16ui,
+
+	ElfRgb8,
+	ElfRgb8Snorm,
+	ElfRgb8i,
+	ElfRgb8ui,*/
+
     ElfCount
+};
+//zhouhe
+enum TFrequency {	
+	EqqTechnique,	
+	EqqMaterial,	
+	EqqModel,
+	EqqMesh,
+	EqqInstance,
+	EqqObject,
+	EqqCount,
 };
 
 enum TLayoutDepth {
@@ -748,6 +773,8 @@ public:
         layoutSpecConstantId = layoutSpecConstantIdEnd;
 
         layoutFormat = ElfNone;
+		layoutFrequency = EqqCount;
+		layoutDynamic = false;
     }
     void clearInterstageLayout()
     {
@@ -770,7 +797,7 @@ public:
 
     bool hasNonXfbLayout() const
     {
-        return hasUniformLayout() ||
+        return hasUniformLayout() || layoutFrequency != EqqCount||	layoutDynamic ||
                hasAnyLocation() ||
                hasStream() ||
                hasFormat() ||
@@ -826,7 +853,9 @@ public:
     // stored as log2 of the actual alignment value
                  unsigned int layoutBufferReferenceAlign :  6;
     static const unsigned int layoutBufferReferenceAlignEnd = 0x3F;
-
+	//zhouhe
+	unsigned layoutDynamic: 1;
+	unsigned layoutFrequency: 4;
     TLayoutFormat layoutFormat                           :  8;
 
     bool layoutPushConstant;
@@ -1032,6 +1061,8 @@ public:
         case ElfR32ui:        return "r32ui";
         case ElfR16ui:        return "r16ui";
         case ElfR8ui:         return "r8ui";
+
+		case ElfRgb32f:         return "rgb32f";
         default:              return "none";
         }
     }

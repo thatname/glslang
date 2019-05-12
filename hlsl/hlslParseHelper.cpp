@@ -1157,6 +1157,8 @@ const TType& HlslParseContext::split(const TType& type, const TString& name, con
 // of the aggregate, triggered on 'topLevel'.
 bool HlslParseContext::shouldFlatten(const TType& type, TStorageQualifier qualifier, bool topLevel) const
 {
+	//zhouhe: don' t flatten every struct for now.
+	return false;
     switch (qualifier) {
     case EvqVaryingIn:
     case EvqVaryingOut:
@@ -6014,7 +6016,8 @@ void HlslParseContext::handleSemantic(TSourceLoc loc, TQualifier& qualifier, TBu
         break;
     case EbvPosition:
         // adjust for stage in/out
-        if (language == EShLangFragment)
+		//if (language == EShLangFragment)
+		if(qualifier.storage == EvqIn || qualifier.storage == EvqVaryingIn)//zhouhe: always accept sv_position!
             builtIn = EbvFragCoord;
         break;
     case EbvFragStencilRef:
@@ -7733,7 +7736,7 @@ TIntermNode* HlslParseContext::declareVariable(const TSourceLoc& loc, const TStr
 
     // correct IO in the type
     switch (type.getQualifier().storage) {
-    case EvqGlobal:
+	case EvqGlobal://break;//zhouhe: if we dont treat global as uniform, we must break here.
     case EvqTemporary:
         clearUniformInputOutput(type.getQualifier());
         break;

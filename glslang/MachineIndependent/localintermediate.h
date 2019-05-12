@@ -475,6 +475,7 @@ public:
     }
     const SpvVersion& getSpv() const { return spvVersion; }
     EShLanguage getStage() const { return language; }
+	void setStage(EShLanguage l) { (EShLanguage&)language = l; }
     void addRequestedExtension(const char* extension) { requestedExtensions.insert(extension); }
     const std::set<std::string>& getRequestedExtensions() const { return requestedExtensions; }
 

@@ -91,7 +91,7 @@ namespace glslang {
         bool acceptStructBufferType(TType&);
         bool acceptTextureBufferType(TType&);
         bool acceptConstantBufferType(TType&);
-        bool acceptStruct(TType&, TIntermNode*& nodeList);
+        bool acceptStruct(TType&, TIntermNode*& nodeList, TStorageQualifier storageQualifier = EvqTemporary);
         bool acceptStructDeclarationList(TTypeList*&, TIntermNode*& nodeList, TVector<TFunctionDeclarator>&);
         bool acceptMemberFunctionDefinition(TIntermNode*& nodeList, const TType&, TString& memberName,
                                             TFunctionDeclarator&);

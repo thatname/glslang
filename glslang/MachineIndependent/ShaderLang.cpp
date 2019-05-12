@@ -72,7 +72,7 @@
 // token to print ", but none of that seems appropriate for this file.
 #include "preprocessor/PpTokens.h"
 
-namespace { // anonymous namespace for file-local functions and symbols
+//namespace { // anonymous namespace for file-local functions and symbols
 
 // Total number of successful initializers of glslang: a refcount
 // Shared global; access should be protected by a global mutex/critical section.
@@ -1270,7 +1270,7 @@ bool CompileDeferred(
                            true, includer, sourceEntryPointName, environment);
 }
 
-} // end anonymous namespace for local functions
+//} // end anonymous namespace for local functions
 
 //
 // ShInitialize() should be called exactly once per process, not per thread.

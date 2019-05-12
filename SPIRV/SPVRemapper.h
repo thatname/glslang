@@ -112,7 +112,7 @@ namespace spv {
 class spirvbin_t : public spirvbin_base_t
 {
 public:
-   spirvbin_t(int verbose = 0) : entryPoint(spv::NoResult), largestNewId(0), verbose(verbose), errorLatch(false)
+   spirvbin_t(int verbose = 0) : /*entryPoint(spv::NoResult),*/ largestNewId(0), verbose(verbose), errorLatch(false)
    { }
 
    virtual ~spirvbin_t() { }
@@ -279,7 +279,7 @@ private:
 
    std::vector<spv::Id>  idMapL;   // ID {M}ap from {L}ocal to {G}lobal IDs
 
-   spv::Id entryPoint;      // module entry point
+   std::set<spv::Id> entryPoint;      // module entry point
    spv::Id largestNewId;    // biggest new ID we have mapped anything to
 
    // Sections of the binary to strip, given as [begin,end)

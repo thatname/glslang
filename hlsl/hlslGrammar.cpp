@@ -371,16 +371,16 @@ bool HlslGrammar::acceptDeclaration(TIntermNode*& nodeList)
     // For that reason, this line is commented out
     // if (acceptSamplerDeclarationDX9(declaredType))
     //     return true;
-
-    bool forbidDeclarators = (peekTokenClass(EHTokCBuffer) || peekTokenClass(EHTokTBuffer));
+	//zhouhe : accept declarator even for cbuffer.
+	bool forbidDeclarators = false;// (peekTokenClass(EHTokCBuffer) || peekTokenClass(EHTokTBuffer));
     // fully_specified_type
     if (! acceptFullySpecifiedType(declaredType, nodeList, declarator.attributes, forbidDeclarators))
         return false;
 
     // cbuffer and tbuffer end with the closing '}'.
     // No semicolon is included.
-    if (forbidDeclarators)
-        return true;
+    //if (forbidDeclarators)
+    //    return true;
 
     // declarator_list
     //    : declarator
@@ -431,8 +431,8 @@ bool HlslGrammar::acceptDeclaration(TIntermNode*& nodeList)
                 parseContext.transferTypeAttributes(token.loc, declarator.attributes, declaredType);
 
             // Fix the storage qualifier if it's a global.
-            if (declaredType.getQualifier().storage == EvqTemporary && parseContext.symbolTable.atGlobalLevel())
-                declaredType.getQualifier().storage = EvqUniform;
+			if (declaredType.getQualifier().storage == EvqTemporary && parseContext.symbolTable.atGlobalLevel())
+				declaredType.getQualifier().storage = EvqUniform;//EvqGlobal;//zhouhe : disable hlsl default-uniform				
 
             // recognize array_specifier
             TArraySizes* arraySizes = nullptr;
@@ -480,7 +480,8 @@ bool HlslGrammar::acceptDeclaration(TIntermNode*& nodeList)
                     parseContext.declareBlock(idToken.loc, variableType, fullName);
                     parseContext.declareStructBufferCounter(idToken.loc, variableType, *fullName);
                 } else {
-                    if (variableType.getQualifier().storage == EvqUniform && ! variableType.containsOpaque()) {
+                    if (false && //zhouhe ignore $global generation.
+						variableType.getQualifier().storage == EvqUniform && ! variableType.containsOpaque()) {
                         // this isn't really an individual variable, but a member of the $Global buffer
                         parseContext.growGlobalUniformBlock(idToken.loc, variableType, *fullName);
                     } else {
@@ -696,11 +697,13 @@ bool HlslGrammar::acceptQualifier(TQualifier& qualifier)
         case EHTokPrecise:
             qualifier.noContraction = true;
             break;
-        case EHTokIn:
+        case EHTokIn:			
             qualifier.storage = (qualifier.storage == EvqOut) ? EvqInOut : EvqIn;
+			qualifier.storage = parseContext.symbolTable.atGlobalLevel() ? EvqVaryingIn : qualifier.storage;//zhouhe alow global in out
             break;
         case EHTokOut:
             qualifier.storage = (qualifier.storage == EvqIn) ? EvqInOut : EvqOut;
+			qualifier.storage = parseContext.symbolTable.atGlobalLevel() ? EvqVaryingOut : qualifier.storage;//zhouhe alow global in out
             break;
         case EHTokInOut:
             qualifier.storage = EvqInOut;
@@ -1553,8 +1556,10 @@ bool HlslGrammar::acceptType(TType& type, TIntermNode*& nodeList)
             advanceToken();
             return true;
         } else
-            return false;
-
+			//zhouhe: in out interface block
+			if(parseContext.symbolTable.atGlobalLevel())
+				return acceptStruct(type, nodeList, EvqGlobal);
+			return false;
     case EHTokVoid:
         new(&type) TType(EbtVoid);
         break;
@@ -2074,11 +2079,11 @@ bool HlslGrammar::acceptType(TType& type, TIntermNode*& nodeList)
 //      | CBUFFER
 //      | TBUFFER
 //
-bool HlslGrammar::acceptStruct(TType& type, TIntermNode*& nodeList)
+bool HlslGrammar::acceptStruct(TType& type, TIntermNode*& nodeList, TStorageQualifier storageQualifier)
 {
     // This storage qualifier will tell us whether it's an AST
     // block type or just a generic structure type.
-    TStorageQualifier storageQualifier = EvqTemporary;
+    //TStorageQualifier storageQualifier = EvqTemporary;//zhouhe in out interface block
     bool readonly = false;
 
     if (acceptTokenClass(EHTokCBuffer)) {
@@ -2088,7 +2093,7 @@ bool HlslGrammar::acceptStruct(TType& type, TIntermNode*& nodeList)
         // TBUFFER
         storageQualifier = EvqBuffer;
         readonly = true;
-    } else if (! acceptTokenClass(EHTokClass) && ! acceptTokenClass(EHTokStruct)) {
+    } else if (! acceptTokenClass(EHTokClass) && ! acceptTokenClass(EHTokStruct) && storageQualifier == EvqTemporary) {
         // Neither CLASS nor STRUCT
         return false;
     }

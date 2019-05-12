@@ -67,7 +67,7 @@ Builder::Builder(unsigned int spvVersion, unsigned int magicNumber, SpvBuildLogg
     builderNumber(magicNumber),
     buildPoint(0),
     uniqueId(0),
-    entryPointFunction(0),
+    //entryPointFunction(0),
     generatingOpCodeForSpecConst(false),
     logger(buildLogger)
 {
@@ -1225,8 +1225,8 @@ void Builder::addMemberDecoration(Id id, unsigned int member, Decoration decorat
 // Comments in header
 Function* Builder::makeEntryPoint(const char* entryPoint)
 {
-    assert(! entryPointFunction);
-
+    //assert(! entryPointFunction);
+	Function* entryPointFunction;
     Block* entry;
     std::vector<Id> params;
     std::vector<std::vector<Decoration>> decorations;

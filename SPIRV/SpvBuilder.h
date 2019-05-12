@@ -671,7 +671,7 @@ public:
     // Check if the builder is generating code for spec constants.
     bool isInSpecConstCodeGenMode() { return generatingOpCodeForSpecConst; }
 
- protected:
+ public:
     Id makeIntConstant(Id typeId, unsigned value, bool specConstant);
     Id makeInt64Constant(Id typeId, unsigned long long value, bool specConstant);
     Id findScalarConstant(Op typeClass, Op opcode, Id typeId, unsigned value);
@@ -708,7 +708,7 @@ public:
     Module module;
     Block* buildPoint;
     Id uniqueId;
-    Function* entryPointFunction;
+    //Function* entryPointFunction;
     bool generatingOpCodeForSpecConst;
     AccessChain accessChain;
 

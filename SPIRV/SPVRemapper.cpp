@@ -410,7 +410,7 @@ namespace spv {
         fnCalls.clear();
         typeConstPos.clear();
         idPosR.clear();
-        entryPoint = spv::NoResult;
+        entryPoint.clear();
         largestNewId = 0;
 
         idMapL.resize(bound(), unused);
@@ -451,7 +451,7 @@ namespace spv {
                 } else if (opCode == spv::Op::OpFunctionCall) {
                     ++fnCalls[asId(start + 3)];
                 } else if (opCode == spv::Op::OpEntryPoint) {
-                    entryPoint = asId(start + 2);
+                    entryPoint.insert(asId(start + 2));
                 } else if (opCode == spv::Op::OpFunction) {
                     if (fnStart != 0) {
                         error("nested function found");
@@ -1064,7 +1064,7 @@ namespace spv {
             changed = false;
 
             for (auto fn = fnPos.begin(); fn != fnPos.end(); ) {
-                if (fn->first == entryPoint) { // don't DCE away the entry point!
+                if (entryPoint.find(fn->first) != entryPoint.end()) { // don't DCE away the entry point!
                     ++fn;
                     continue;
                 }
@@ -1099,6 +1099,7 @@ namespace spv {
                 } else ++fn;
             }
         }
+		strip();
     }
 
     // remove unused function variables + decorations

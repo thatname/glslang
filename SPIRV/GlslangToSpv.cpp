@@ -1324,19 +1324,23 @@ TGlslangToSpvTraverser::TGlslangToSpvTraverser(unsigned int spvVersion, const gl
         builder.addCapability(spv::CapabilityVariablePointers);
     }
 
-    shaderEntry = builder.makeEntryPoint(glslangIntermediate->getEntryPointName().c_str());
+    
+	//zhouhe : global variable initializer goes here
+	shaderEntry = builder.makeEntryPoint("global_initializers");
+	/*
+	shaderEntry = builder.makeEntryPoint(glslangIntermediate->getEntryPointName().c_str());
     entryPoint = builder.addEntryPoint(executionModel, shaderEntry, glslangIntermediate->getEntryPointName().c_str());
-
+	*/
     // Add the source extensions
     const auto& sourceExtensions = glslangIntermediate->getRequestedExtensions();
     for (auto it = sourceExtensions.begin(); it != sourceExtensions.end(); ++it)
         builder.addSourceExtension(it->c_str());
-
+	/*
     // Add the top-level modes for this shader.
 
     if (glslangIntermediate->getXfbMode()) {
         builder.addCapability(spv::CapabilityTransformFeedback);
-        builder.addExecutionMode(shaderEntry, spv::ExecutionModeXfb);
+        //builder.addExecutionMode(shaderEntry, spv::ExecutionModeXfb);
     }
 
     unsigned int mode;
@@ -1498,7 +1502,7 @@ TGlslangToSpvTraverser::TGlslangToSpvTraverser(unsigned int spvVersion, const gl
 
     default:
         break;
-    }
+    }*/
 }
 
 // Finish creating SPV, after the traversal is complete.
@@ -1511,9 +1515,11 @@ void TGlslangToSpvTraverser::finishSpv()
     }
 
     // finish off the entry-point SPV instruction by adding the Input/Output <id>
-    for (auto it = iOSet.cbegin(); it != iOSet.cend(); ++it)
-        entryPoint->addIdOperand(*it);
-
+     //zhouhe: dont need write the ioset for entrypoint.
+	for (auto it = iOSet.cbegin(); it != iOSet.cend(); ++it)
+		for(auto& i: builder.entryPoints)
+			i->addIdOperand(*it);
+	
     // Add capabilities, extensions, remove unneeded decorations, etc., 
     // based on the resulting SPIR-V.
     builder.postProcess();
@@ -2089,19 +2095,165 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         return false;
     }
     case glslang::EOpFunction:
+		//zhouhe :refactor: build every entry point.
         if (visit == glslang::EvPreVisit) {
+			handleFunctionEntry(node);			
             if (isShaderEntryPoint(node)) {
-                inEntryPoint = true;
-                builder.setBuildPoint(shaderEntry->getLastBlock());
-                currentFunction = shaderEntry;
-            } else {
-                handleFunctionEntry(node);
-            }
+               // inEntryPoint = true;
+                builder.setBuildPoint(currentFunction->getLastBlock());
+
+
+				EShLanguage lang;
+				glslang::TString name = node->getName();
+				if (name.find('(') != glslang::TString::npos)
+					name = name.substr(0, name.find('('));
+
+				if (name.find("_vert") != glslang::TString::npos)
+					lang = EShLangVertex;
+
+				if (name.find("_tesc") != glslang::TString::npos)
+					lang = EShLangTessControl;
+
+				if (name.find("_tese") != glslang::TString::npos)
+					lang = EShLangTessEvaluation;
+
+				if (name.find("_geom") != glslang::TString::npos)
+					lang = EShLangGeometry;
+
+				if (name.find("_frag") != glslang::TString::npos)
+					lang = EShLangFragment;
+
+				if (name.find("_comp") != glslang::TString::npos)
+					lang = EShLangCompute;
+
+				spv::ExecutionModel executionModel = TranslateExecutionModel(lang);
+				unsigned int mode;
+				builder.addEntryPoint(executionModel, currentFunction, name.c_str());
+
+				auto shaderEntry = currentFunction;
+
+				switch (lang) {
+				case EShLangVertex:
+					builder.addCapability(spv::CapabilityShader);
+					break;
+
+				case EShLangTessEvaluation:
+				case EShLangTessControl:
+					builder.addCapability(spv::CapabilityTessellation);
+
+					glslang::TLayoutGeometry primitive;
+
+					if (lang == EShLangTessControl) {
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModeOutputVertices, glslangIntermediate->getVertices());
+						primitive = glslangIntermediate->getOutputPrimitive();
+					}
+					else {
+						primitive = glslangIntermediate->getInputPrimitive();
+					}
+
+					switch (primitive) {
+					case glslang::ElgTriangles:           mode = spv::ExecutionModeTriangles;     break;
+					case glslang::ElgQuads:               mode = spv::ExecutionModeQuads;         break;
+					case glslang::ElgIsolines:            mode = spv::ExecutionModeIsolines;      break;
+					default:                              mode = spv::ExecutionModeMax;           break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+
+					switch (glslangIntermediate->getVertexSpacing()) {
+					case glslang::EvsEqual:            mode = spv::ExecutionModeSpacingEqual;          break;
+					case glslang::EvsFractionalEven:   mode = spv::ExecutionModeSpacingFractionalEven; break;
+					case glslang::EvsFractionalOdd:    mode = spv::ExecutionModeSpacingFractionalOdd;  break;
+					default:                           mode = spv::ExecutionModeMax;                   break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+
+					switch (glslangIntermediate->getVertexOrder()) {
+					case glslang::EvoCw:     mode = spv::ExecutionModeVertexOrderCw;  break;
+					case glslang::EvoCcw:    mode = spv::ExecutionModeVertexOrderCcw; break;
+					default:                 mode = spv::ExecutionModeMax;            break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+
+					if (glslangIntermediate->getPointMode())
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModePointMode);
+					break;
+
+				case EShLangGeometry:
+					builder.addCapability(spv::CapabilityGeometry);
+					switch (glslangIntermediate->getInputPrimitive()) {
+					case glslang::ElgPoints:             mode = spv::ExecutionModeInputPoints;             break;
+					case glslang::ElgLines:              mode = spv::ExecutionModeInputLines;              break;
+					case glslang::ElgLinesAdjacency:     mode = spv::ExecutionModeInputLinesAdjacency;     break;
+					case glslang::ElgTriangles:          mode = spv::ExecutionModeTriangles;               break;
+					case glslang::ElgTrianglesAdjacency: mode = spv::ExecutionModeInputTrianglesAdjacency; break;
+					default:                             mode = spv::ExecutionModeMax;                     break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+
+					builder.addExecutionMode(shaderEntry, spv::ExecutionModeInvocations, glslangIntermediate->getInvocations());
+
+					switch (glslangIntermediate->getOutputPrimitive()) {
+					case glslang::ElgPoints:        mode = spv::ExecutionModeOutputPoints;                 break;
+					case glslang::ElgLineStrip:     mode = spv::ExecutionModeOutputLineStrip;              break;
+					case glslang::ElgTriangleStrip: mode = spv::ExecutionModeOutputTriangleStrip;          break;
+					default:                        mode = spv::ExecutionModeMax;                          break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+					builder.addExecutionMode(shaderEntry, spv::ExecutionModeOutputVertices, glslangIntermediate->getVertices());
+					break;
+
+				case EShLangFragment:
+					builder.addCapability(spv::CapabilityShader);
+					if (glslangIntermediate->getPixelCenterInteger())
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModePixelCenterInteger);
+
+					if (glslangIntermediate->getOriginUpperLeft())
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModeOriginUpperLeft);
+					else
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModeOriginLowerLeft);
+
+					if (glslangIntermediate->getEarlyFragmentTests())
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModeEarlyFragmentTests);
+
+					if (glslangIntermediate->getPostDepthCoverage()) {
+						builder.addCapability(spv::CapabilitySampleMaskPostDepthCoverage);
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModePostDepthCoverage);
+						builder.addExtension(spv::E_SPV_KHR_post_depth_coverage);
+					}
+
+					switch (glslangIntermediate->getDepth()) {
+					case glslang::EldGreater:  mode = spv::ExecutionModeDepthGreater; break;
+					case glslang::EldLess:     mode = spv::ExecutionModeDepthLess;    break;
+					default:                   mode = spv::ExecutionModeMax;          break;
+					}
+					if (mode != spv::ExecutionModeMax)
+						builder.addExecutionMode(shaderEntry, (spv::ExecutionMode)mode);
+
+					if (glslangIntermediate->getDepth() != glslang::EldUnchanged && glslangIntermediate->isDepthReplacing())
+						builder.addExecutionMode(shaderEntry, spv::ExecutionModeDepthReplacing);
+					break;
+
+				case EShLangCompute:
+					builder.addCapability(spv::CapabilityShader);
+					builder.addExecutionMode(shaderEntry, spv::ExecutionModeLocalSize, glslangIntermediate->getLocalSize(0),
+						glslangIntermediate->getLocalSize(1),
+						glslangIntermediate->getLocalSize(2));
+					break;
+
+				default:
+					break;
+				}
+            } 
         } else {
-            if (inEntryPoint)
-                entryPointTerminated = true;
+            //if (inEntryPoint)
+             //   entryPointTerminated = true;
             builder.leaveFunction();
-            inEntryPoint = false;
+            //inEntryPoint = false;
         }
 
         return true;
@@ -3803,7 +3955,8 @@ void TGlslangToSpvTraverser::declareUseOfStructMember(const glslang::TTypeList& 
 
 bool TGlslangToSpvTraverser::isShaderEntryPoint(const glslang::TIntermAggregate* node)
 {
-    return node->getName().compare(glslangIntermediate->getEntryPointMangledName().c_str()) == 0;
+	//zhouhe: entry point must have entry in it.
+	return node->getName().find("entry_") != glslang::TString::npos;// compare(glslangIntermediate->getEntryPointMangledName().c_str()) == 0;
 }
 
 // Does parameter need a place to keep writes, separate from the original?
@@ -3853,7 +4006,7 @@ void TGlslangToSpvTraverser::makeFunctions(const glslang::TIntermSequence& glslF
 
     for (int f = 0; f < (int)glslFunctions.size(); ++f) {
         glslang::TIntermAggregate* glslFunction = glslFunctions[f]->getAsAggregate();
-        if (! glslFunction || glslFunction->getOp() != glslang::EOpFunction || isShaderEntryPoint(glslFunction))
+        if (! glslFunction || glslFunction->getOp() != glslang::EOpFunction /*|| isShaderEntryPoint(glslFunction)*/)
             continue;
 
         // We're on a user function.  Set up the basic interface for the function now,
